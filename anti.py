@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-
+import hashlib
+import secrets
 # =========================================================
 # PAGE CONFIGURATION
 # =========================================================
@@ -21,7 +22,274 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ======# =========================================================
+# LOGIN SYSTEM
 # =========================================================
+
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "role" not in st.session_state:
+    st.session_state.role = None
+
+if "login_page" not in st.session_state:
+    st.session_state.login_page = "home"
+# =========================================================
+# USER ACCOUNT DATABASE
+# =========================================================
+
+USER_DB = "users.db"
+
+
+def init_user_database():
+    conn = sqlite3.connect(USER_DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def hash_password(password):
+    salt = secrets.token_hex(16)
+
+    password_hash = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode(),
+        salt.encode(),
+        100000
+    ).hex()
+
+    return f"{salt}${password_hash}"
+
+
+def verify_password(password, stored_password):
+    try:
+        salt, saved_hash = stored_password.split("$", 1)
+
+        check_hash = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode(),
+            salt.encode(),
+            100000
+        ).hex()
+
+        return secrets.compare_digest(check_hash, saved_hash)
+
+    except ValueError:
+        return False
+
+
+def create_user(username, password):
+    conn = sqlite3.connect(USER_DB)
+
+    try:
+        conn.execute(
+            """
+            INSERT INTO users
+            (username, password_hash, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (
+                username,
+                hash_password(password),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+        )
+
+        conn.commit()
+        return True
+
+    except sqlite3.IntegrityError:
+        return False
+
+    finally:
+        conn.close()
+
+
+def authenticate_user(username, password):
+    conn = sqlite3.connect(USER_DB)
+
+    row = conn.execute(
+        "SELECT password_hash FROM users WHERE username = ?",
+        (username,)
+    ).fetchone()
+
+    conn.close()
+
+    if row:
+        return verify_password(password, row[0])
+
+    return False
+
+
+init_user_database()
+
+
+# ---------------------------------------------------------
+# LOGIN PAGE
+# ---------------------------------------------------------
+
+if not st.session_state.logged_in:
+
+    st.markdown("""
+        <h1 style="text-align:center;">
+            🚚 NER Smart Logistics
+        </h1>
+        <p style="text-align:center;">
+            AI-Powered Logistics & Accessibility Intelligence
+        </p>
+    """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    col1, col2 = st.columns(2)
+
+    # USER
+    with col1:
+        st.subheader("👤 User")
+        st.write("Access logistics tools, maps and reporting.")
+
+        if st.button("👤 User Login", use_container_width=True):
+            st.session_state.login_page = "user"
+
+    # ADMIN
+    with col2:
+        st.subheader("👨‍💼 Admin")
+        st.write("Manage reports, users and logistics intelligence.")
+
+        if st.button("👨‍💼 Admin Login", use_container_width=True):
+            st.session_state.login_page = "admin"
+
+
+    # -----------------------------------------------------
+        # USER LOGIN FORM
+    # -----------------------------------------------------
+
+        if st.session_state.login_page == "user":
+
+            st.markdown("---")
+            st.subheader("👤 User Login")
+
+            user_mode = st.radio(
+        "Account",
+        ["🔐 Login", "📝 Sign Up"],
+        horizontal=True
+    )
+
+
+         # -----------------------------------------------------
+# USER LOGIN FORM
+# -----------------------------------------------------
+
+        if st.session_state.login_page == "user":
+
+         st.markdown("---")
+         st.subheader("👤 User Login")
+
+    user_mode = st.radio(
+        "Account",
+        ["🔐 Login", "📝 Sign Up"],
+        horizontal=True,
+        key="user_account_mode"
+    )
+
+    if user_mode == "🔐 Login":
+
+        username = st.text_input("Username")
+        password = st.text_input(
+            "Password",
+            type="password"
+        )
+
+        if st.button(
+            "🔐 LOGIN AS USER",
+            use_container_width=True
+        ):
+
+            if authenticate_user(username, password):
+                st.session_state.logged_in = True
+                st.session_state.role = "user"
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password")
+
+    else:
+
+        new_username = st.text_input("Create Username")
+        new_password = st.text_input(
+            "Create Password",
+            type="password"
+        )
+        confirm_password = st.text_input(
+            "Confirm Password",
+            type="password"
+        )
+
+        if st.button(
+            "📝 CREATE ACCOUNT",
+            use_container_width=True
+        ):
+
+            if not new_username or not new_password:
+                st.warning("⚠️ Fill all fields.")
+
+            elif new_password != confirm_password:
+                st.error("❌ Passwords do not match.")
+
+            elif create_user(new_username, new_password):
+                st.success("✅ Account created!")
+                st.info("Now switch to Login.")
+
+            else:
+                st.error("❌ Username already exists.")
+# -----------------------------------------------------
+# ADMIN LOGIN FORM
+# -----------------------------------------------------
+
+    if st.session_state.login_page == "admin":    
+
+       st.markdown("---")
+       st.subheader("👨‍💼 Admin Login")
+
+    admin_username = st.text_input(
+        "Admin Username",
+        key="admin_username"
+    )
+
+    admin_password = st.text_input(
+        "Admin Password",
+        type="password",
+        key="admin_password"
+    )
+
+    if st.button(
+        "🔐 LOGIN AS ADMIN",
+        use_container_width=True
+    ):
+
+        if admin_username == "admin" and admin_password == "admin123":
+
+            st.session_state.logged_in = True
+            st.session_state.role = "admin"
+
+            st.success("✅ Admin Login Successful!")
+            st.rerun()
+
+        else:
+            st.error("❌ Invalid admin username or password")
+    
+    # STOP DASHBOARD FROM LOADING
+    st.stop()
+#===================================================
 # FUTURISTIC COMMAND CENTER CSS & DESIGN TOKENS
 # =========================================================
 
@@ -1005,7 +1273,59 @@ analyze_clicked = st.sidebar.button(
     key="analyze_button",
     type="primary"
 )
+# =========================================================
+# HELP & SUPPORT
+# =========================================================
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("## 🆘 Help & Support")
+
+st.sidebar.caption("Need help? We're here to assist you.")
+
+# Contact Support
+st.sidebar.markdown(
+    '<a href="tel:+91XXXXXXXXXX">'
+    '<button style="width:100%; padding:10px; cursor:pointer;">'
+    '📞 Contact Support'
+    '</button>'
+    '</a>',
+    unsafe_allow_html=True
+)
+
+# Report an Issue
+if st.sidebar.button("🐛 Report an Issue", use_container_width=True):
+    st.session_state["show_issue_form"] = True
+
+if st.session_state.get("show_issue_form", False):
+
+    st.sidebar.markdown("### 🐛 Report an Issue")
+
+    issue_type = st.sidebar.selectbox(
+        "Issue Type",
+        [
+            "🗺️ Map Problem",
+            "🚨 Alert Problem",
+            "🔄 Route/Rerouting Problem",
+            "🤖 Prediction Problem",
+            "🌐 Website Problem",
+            "📌 Other"
+        ],
+        key="issue_type"
+    )
+
+    issue_description = st.sidebar.text_area(
+        "Describe the issue",
+        placeholder="Tell us what went wrong...",
+        key="issue_description"
+    )
+
+    if st.sidebar.button("🚀 Submit Issue", use_container_width=True):
+
+        if issue_description.strip():
+            st.sidebar.success("✅ Issue reported successfully!")
+            st.session_state["show_issue_form"] = False
+        else:
+            st.sidebar.warning("⚠️ Please describe the issue first.")
 # =========================================================
 # TOP FUTURISTIC COMMAND HEADER
 # =========================================================
