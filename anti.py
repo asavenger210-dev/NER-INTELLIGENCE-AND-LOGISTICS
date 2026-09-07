@@ -133,6 +133,9 @@ def authenticate_user(username, password):
 
 init_user_database()
 
+# Demo account so judges can always log in as a user
+create_user("demo", "demo123")
+
 
 # ---------------------------------------------------------
 # LOGIN PAGE
@@ -169,124 +172,102 @@ if not st.session_state.logged_in:
         if st.button("👨‍💼 Admin Login", use_container_width=True):
             st.session_state.login_page = "admin"
 
-
     # -----------------------------------------------------
-        # USER LOGIN FORM
+    # USER LOGIN / SIGN UP FORM
     # -----------------------------------------------------
 
-        if st.session_state.login_page == "user":
+    if st.session_state.login_page == "user":
 
-            st.markdown("---")
-            st.subheader("👤 User Login")
+        st.markdown("---")
+        st.subheader("👤 User Login")
 
-            user_mode = st.radio(
-        "Account",
-        ["🔐 Login", "📝 Sign Up"],
-        horizontal=True
-    )
-
-
-         # -----------------------------------------------------
-# USER LOGIN FORM
-# -----------------------------------------------------
-
-        if st.session_state.login_page == "user":
-
-         st.markdown("---")
-         st.subheader("👤 User Login")
-
-    user_mode = st.radio(
-        "Account",
-        ["🔐 Login", "📝 Sign Up"],
-        horizontal=True,
-        key="user_account_mode"
-    )
-
-    if user_mode == "🔐 Login":
-
-        username = st.text_input("Username")
-        password = st.text_input(
-            "Password",
-            type="password"
+        user_mode = st.radio(
+            "Account",
+            ["🔐 Login", "📝 Sign Up"],
+            horizontal=True,
+            key="user_account_mode"
         )
 
-        if st.button(
-            "🔐 LOGIN AS USER",
-            use_container_width=True
-        ):
+        if user_mode == "🔐 Login":
 
-            if authenticate_user(username, password):
-                st.session_state.logged_in = True
-                st.session_state.role = "user"
-                st.rerun()
-            else:
-                st.error("❌ Invalid username or password")
+            username = st.text_input("Username", key="user_username")
+            password = st.text_input(
+                "Password",
+                type="password",
+                key="user_password"
+            )
 
-    else:
+            if st.button("🔐 LOGIN AS USER", use_container_width=True):
 
-        new_username = st.text_input("Create Username")
-        new_password = st.text_input(
-            "Create Password",
-            type="password"
-        )
-        confirm_password = st.text_input(
-            "Confirm Password",
-            type="password"
-        )
-
-        if st.button(
-            "📝 CREATE ACCOUNT",
-            use_container_width=True
-        ):
-
-            if not new_username or not new_password:
-                st.warning("⚠️ Fill all fields.")
-
-            elif new_password != confirm_password:
-                st.error("❌ Passwords do not match.")
-
-            elif create_user(new_username, new_password):
-                st.success("✅ Account created!")
-                st.info("Now switch to Login.")
-
-            else:
-                st.error("❌ Username already exists.")
-# -----------------------------------------------------
-# ADMIN LOGIN FORM
-# -----------------------------------------------------
-
-    if st.session_state.login_page == "admin":    
-
-       st.markdown("---")
-       st.subheader("👨‍💼 Admin Login")
-
-    admin_username = st.text_input(
-        "Admin Username",
-        key="admin_username"
-    )
-
-    admin_password = st.text_input(
-        "Admin Password",
-        type="password",
-        key="admin_password"
-    )
-
-    if st.button(
-        "🔐 LOGIN AS ADMIN",
-        use_container_width=True
-    ):
-
-        if admin_username == "admin" and admin_password == "admin123":
-
-            st.session_state.logged_in = True
-            st.session_state.role = "admin"
-
-            st.success("✅ Admin Login Successful!")
-            st.rerun()
+                if authenticate_user(username, password):
+                    st.session_state.logged_in = True
+                    st.session_state.role = "user"
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid username or password")
 
         else:
-            st.error("❌ Invalid admin username or password")
-    
+
+            new_username = st.text_input("Create Username", key="new_username")
+            new_password = st.text_input(
+                "Create Password",
+                type="password",
+                key="new_password"
+            )
+            confirm_password = st.text_input(
+                "Confirm Password",
+                type="password",
+                key="confirm_password"
+            )
+
+            if st.button("📝 CREATE ACCOUNT", use_container_width=True):
+
+                if not new_username or not new_password:
+                    st.warning("⚠️ Fill all fields.")
+
+                elif new_password != confirm_password:
+                    st.error("❌ Passwords do not match.")
+
+                elif create_user(new_username, new_password):
+                    st.success("✅ Account created!")
+                    st.info("Now switch to Login.")
+
+                else:
+                    st.error("❌ Username already exists.")
+
+    # -----------------------------------------------------
+    # ADMIN LOGIN FORM
+    # -----------------------------------------------------
+
+    if st.session_state.login_page == "admin":
+
+        st.markdown("---")
+        st.subheader("👨‍💼 Admin Login")
+
+        admin_username = st.text_input(
+            "Admin Username",
+            key="admin_username"
+        )
+
+        admin_password = st.text_input(
+            "Admin Password",
+            type="password",
+            key="admin_password"
+        )
+
+        if st.button("🔐 LOGIN AS ADMIN", use_container_width=True):
+
+            if admin_username == "admin" and admin_password == "admin123":
+
+                st.session_state.logged_in = True
+                st.session_state.role = "admin"
+
+                st.success("✅ Admin Login Successful!")
+                st.rerun()
+
+            else:
+                st.error("❌ Invalid admin username or password")
+
     # STOP DASHBOARD FROM LOADING
     st.stop()
 #===================================================
